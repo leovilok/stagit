@@ -14,6 +14,11 @@
 
 #include <git2.h>
 
+#ifdef USE_LOWDOWN
+#include <sys/queue.h>
+#include <lowdown.h>
+#endif
+
 #include "compat.h"
 
 struct deltainfo {
@@ -757,6 +762,26 @@ writeatom(FILE *fp)
 	return 0;
 }
 
+#ifdef USE_LOWDOWN
+void
+writemarkdownblob(FILE *fp, git_blob *blob)
+{
+	char *buf;
+	size_t bufsz;
+	struct lowdown_opts opt = {
+		.type = LOWDOWN_HTML,
+		.feat = LOWDOWN_DEFINITION|LOWDOWN_FENCED|LOWDOWN_FOOTNOTES|
+			LOWDOWN_METADATA|LOWDOWN_STRIKE|LOWDOWN_SUPER|LOWDOWN_TABLES,
+	};
+
+	lowdown_buf(&opt, git_blob_rawcontent(blob), git_blob_rawsize(blob),
+			&buf, &bufsz, NULL);
+
+	fwrite(buf, 1, bufsz, fp);
+	free(buf);
+}
+#endif
+
 int
 writeblob(git_object *obj, const char *fpath, const char *filename, git_off_t filesize)
 {
@@ -787,6 +812,12 @@ writeblob(git_object *obj, const char *fpath, const char *filename, git_off_t fi
 
 	if (git_blob_is_binary((git_blob *)obj)) {
 		fputs("<p>Binary file.</p>\n", fp);
+#ifdef USE_LOWDOWN
+	} else if (strlen(filename) >= 3 && !strcmp(filename + strlen(filename) - 3, ".md")) {
+		writemarkdownblob(fp, (git_blob *)obj);
+		if (ferror(fp))
+			err(1, "fwrite");
+#endif
 	} else {
 		lc = writeblobhtml(fp, (git_blob *)obj);
 		if (ferror(fp))
