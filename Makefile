@@ -11,10 +11,15 @@ DOCPREFIX = ${PREFIX}/share/doc/${NAME}
 LIBGIT_INC = -I/usr/local/include
 LIBGIT_LIB = -L/usr/local/lib -lgit2
 
+LOWDOWN_LIB = ${USE_LOWDOWN:1=-llowdown -lm}
+LOWDOWN_CPP = ${USE_LOWDOWN:1=-DUSE_LOWDOWN}
+
 # use system flags.
 STAGIT_CFLAGS = ${LIBGIT_INC} ${CFLAGS}
-STAGIT_LDFLAGS = ${LIBGIT_LIB} ${LDFLAGS}
-STAGIT_CPPFLAGS = -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE -D_BSD_SOURCE
+STAGIT_LDFLAGS = ${LIBGIT_LIB} ${LOWDOWN_LIB} ${LDFLAGS}
+STAGIT_CPPFLAGS = \
+	-D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE -D_BSD_SOURCE \
+	${LOWDOWN_CPP}
 
 SRC = \
 	stagit.c\
@@ -34,7 +39,8 @@ DOC = \
 	README
 HDR = compat.h
 
-COMPATOBJ = \
+# liblowdown.a contains its own compat.o ... with the same functions as here
+COMPATOBJ${USE_LOWDOWN} = \
 	reallocarray.o\
 	strlcat.o\
 	strlcpy.o
